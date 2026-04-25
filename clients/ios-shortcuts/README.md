@@ -8,7 +8,7 @@
 
 在 iPhone 或 iPad 上打开：
 
-[添加 SRC Guard 快捷指令](https://www.icloud.com/shortcuts/0f757b99882d41fcb5907818ca7df217)
+[添加 SRC Guard 快捷指令](https://www.icloud.com/shortcuts/23e45fd38cd74a8587a7a733c41fac60)
 
 添加后，打开快捷指令，直接在快捷指令内容里修改：
 
@@ -42,7 +42,7 @@ This client uses a shared iOS Shortcut to notify SRC Guard. After installing it,
 
 Open this on your iPhone or iPad:
 
-[Add the SRC Guard Shortcut](https://www.icloud.com/shortcuts/0f757b99882d41fcb5907818ca7df217)
+[Add the SRC Guard Shortcut](https://www.icloud.com/shortcuts/23e45fd38cd74a8587a7a733c41fac60)
 
 After adding it, open the shortcut and edit these values inside the shortcut:
 
