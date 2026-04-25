@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import Optional
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.docker_control import DockerControl
 from app.settings import Settings
@@ -19,7 +19,17 @@ app = FastAPI(title="SRC Guard", version="1.0.0")
 
 class PlayStartRequest(BaseModel):
     client: str = Field(min_length=1, max_length=64)
-    minutes: Optional[int] = Field(default=None, ge=1)
+    duration: Optional[int] = Field(default=None, ge=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_duration_fields(cls, data: object) -> object:
+        if isinstance(data, dict) and "duration" not in data:
+            if "lock_duration_minutes" in data:
+                data = {**data, "duration": data["lock_duration_minutes"]}
+            elif "minutes" in data:
+                data = {**data, "duration": data["minutes"]}
+        return data
 
 
 class PlayStopRequest(BaseModel):
@@ -36,11 +46,18 @@ def require_token(
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="unauthorized")
 
 
-def active_payload() -> list[dict[str, str]]:
+def clamp_duration(requested_duration: int | None) -> int:
+    value = requested_duration or settings.default_duration
+    return min(value, settings.max_duration)
+
+
+def active_payload() -> list[dict[str, str | None]]:
     return [
         {
             "client": play.client,
+            "mode": play.mode,
             "expires_at": play.expires_at.isoformat(),
+            "block_until": play.block_until.isoformat(),
             "updated_at": play.updated_at.isoformat(),
         }
         for play in state.active()
@@ -60,18 +77,22 @@ def get_status() -> dict[str, object]:
 
 @app.post("/webhook/play/start", dependencies=[Depends(require_token)])
 def play_start(request: PlayStartRequest) -> dict[str, object]:
-    minutes = request.minutes or settings.default_play_minutes
-    minutes = min(minutes, settings.max_play_minutes)
-    expires_at = utc_now() + timedelta(minutes=minutes)
+    expires_at = utc_now() + timedelta(minutes=clamp_duration(request.duration))
+    was_blocked = state.is_blocked()
 
     play = state.start(request.client, expires_at)
-    game_result = docker_control.force_stop_games()
-    docker_result = docker_control.stop_src()
+    if was_blocked:
+        game_result = "skipped_already_blocked"
+        docker_result = "skipped_already_blocked"
+    else:
+        game_result = docker_control.force_stop_games()
+        docker_result = docker_control.stop_src()
 
     return {
         "blocked": True,
         "client": play.client,
         "expires_at": play.expires_at.isoformat(),
+        "extended": was_blocked,
         "game": game_result,
         "docker": docker_result,
         "active": active_payload(),
@@ -83,10 +104,11 @@ def play_stop(request: PlayStopRequest) -> dict[str, object]:
     removed = state.stop(request.client)
     blocked = state.is_blocked()
     docker_result = "skipped"
-    if not blocked and settings.auto_resume:
+    if removed and not blocked and settings.auto_resume:
         docker_result = docker_control.start_src()
 
     return {
+        "accepted": removed,
         "removed": removed,
         "blocked": blocked,
         "docker": docker_result,

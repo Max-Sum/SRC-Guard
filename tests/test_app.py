@@ -40,25 +40,67 @@ def auth():
     return {"Authorization": "Bearer test-token"}
 
 
-def test_start_refreshes_same_client_and_stops_src(tmp_path, monkeypatch):
+def test_start_extends_same_client_without_touching_docker_when_already_blocked(
+    tmp_path, monkeypatch
+):
     client, fake_docker, _ = make_client(tmp_path, monkeypatch)
 
     first = client.post(
         "/webhook/play/start",
-        json={"client": "ipad", "minutes": 30},
+        json={"client": "ipad", "duration": 30},
         headers=auth(),
     )
     second = client.post(
         "/webhook/play/start",
-        json={"client": "ipad", "minutes": 60},
+        json={"client": "ipad", "duration": 60},
         headers=auth(),
     )
 
     assert first.status_code == 200
     assert second.status_code == 200
     assert len(second.json()["active"]) == 1
-    assert second.json()["game"] == "stopped"
-    assert fake_docker.calls == ["games", "stop", "games", "stop"]
+    assert first.json()["extended"] is False
+    assert second.json()["extended"] is True
+    assert second.json()["game"] == "skipped_already_blocked"
+    assert second.json()["docker"] == "skipped_already_blocked"
+    assert fake_docker.calls == ["games", "stop"]
+
+
+def test_start_extends_other_client_without_touching_docker_when_already_blocked(
+    tmp_path, monkeypatch
+):
+    client, fake_docker, _ = make_client(tmp_path, monkeypatch)
+
+    client.post(
+        "/webhook/play/start",
+        json={"client": "ipad", "duration": 30},
+        headers=auth(),
+    )
+    response = client.post(
+        "/webhook/play/start",
+        json={"client": "phone", "duration": 60},
+        headers=auth(),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["blocked"] is True
+    assert response.json()["extended"] is True
+    assert len(response.json()["active"]) == 2
+    assert response.json()["game"] == "skipped_already_blocked"
+    assert response.json()["docker"] == "skipped_already_blocked"
+    assert fake_docker.calls == ["games", "stop"]
+
+
+def test_refresh_endpoint_is_not_exposed(tmp_path, monkeypatch):
+    client, _, _ = make_client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/webhook/play/refresh",
+        json={"client": "ipad", "duration": 60},
+        headers=auth(),
+    )
+
+    assert response.status_code == 404
 
 
 def test_start_still_stops_src_when_force_stop_games_fails(tmp_path, monkeypatch):
@@ -67,7 +109,7 @@ def test_start_still_stops_src_when_force_stop_games_fails(tmp_path, monkeypatch
 
     response = client.post(
         "/webhook/play/start",
-        json={"client": "ipad", "minutes": 30},
+        json={"client": "ipad", "duration": 30},
         headers=auth(),
     )
 
@@ -83,7 +125,7 @@ def test_start_still_stops_src_when_src_container_is_not_running(tmp_path, monke
 
     response = client.post(
         "/webhook/play/start",
-        json={"client": "ipad", "minutes": 30},
+        json={"client": "ipad", "duration": 30},
         headers=auth(),
     )
 
@@ -99,7 +141,7 @@ def test_allow_start_is_locked_while_external_play_is_active(tmp_path, monkeypat
 
     client.post(
         "/webhook/play/start",
-        json={"client": "phone", "minutes": 30},
+        json={"client": "phone", "duration": 30},
         headers=auth(),
     )
 
@@ -115,17 +157,21 @@ def test_stop_only_resumes_when_last_client_stops(tmp_path, monkeypatch):
     client.post("/webhook/play/start", json={"client": "ipad"}, headers=auth())
     client.post("/webhook/play/start", json={"client": "phone"}, headers=auth())
     first_stop = client.post(
-        "/webhook/play/stop", json={"client": "ipad"}, headers=auth()
+        "/webhook/play/stop",
+        json={"client": "ipad"},
+        headers=auth(),
     )
     second_stop = client.post(
-        "/webhook/play/stop", json={"client": "phone"}, headers=auth()
+        "/webhook/play/stop",
+        json={"client": "phone"},
+        headers=auth(),
     )
 
     assert first_stop.json()["blocked"] is True
     assert first_stop.json()["docker"] == "skipped"
     assert second_stop.json()["blocked"] is False
     assert second_stop.json()["docker"] == "started"
-    assert fake_docker.calls == ["games", "stop", "games", "stop", "start"]
+    assert fake_docker.calls == ["games", "stop", "start"]
 
 
 def test_expired_sessions_no_longer_block(tmp_path, monkeypatch):
