@@ -1,0 +1,5 @@
+private/
+data/
+src-guard-data/
+.pytest_cache/
+__pycache__/
