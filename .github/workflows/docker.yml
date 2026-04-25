@@ -4,11 +4,21 @@ on:
   push:
     branches:
       - master
-    tags:
-      - "v*"
+    paths:
+      - Dockerfile
+      - app/**
+      - .github/workflows/docker.yml
+      - requirements.txt
+      - environment.yml
   pull_request:
     branches:
       - master
+    paths:
+      - Dockerfile
+      - app/**
+      - .github/workflows/docker.yml
+      - requirements.txt
+      - environment.yml
   workflow_dispatch:
 
 permissions:
