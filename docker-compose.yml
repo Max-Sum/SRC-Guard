@@ -1,6 +1,6 @@
 services:
   src-guard:
-    build: .
+    image: ghcr.io/max-sum/src-guard:latest
     container_name: src-guard
     restart: unless-stopped
     ports:

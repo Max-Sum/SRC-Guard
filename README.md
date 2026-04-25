@@ -33,13 +33,13 @@ SRC_GUARD_ADB_CONNECT: "<android-host>:5555"
 启动服务：
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-也可以使用已经构建好的多架构镜像：
+如果想从源码本地构建镜像，可以把 compose 里的 `image` 改成：
 
 ```yaml
-image: ghcr.io/max-sum/src-guard:latest
+build: .
 ```
 
 默认监听端口是 `22368`。
@@ -172,13 +172,13 @@ SRC_GUARD_ADB_CONNECT: "<android-host>:5555"
 Then start the guard:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-You can also use the prebuilt multi-arch image:
+If you want to build the image locally from source, replace `image` in the compose file with:
 
 ```yaml
-image: ghcr.io/max-sum/src-guard:latest
+build: .
 ```
 
 The service listens on `22368` by default.
