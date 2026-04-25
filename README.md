@@ -16,7 +16,7 @@ SRC Guard 会做三件事：
 
 - Docker Engine 或 Docker Desktop。
 - 一个运行在 Docker 容器里的 StarRailCopilot。
-- guard 容器可以通过 ADB 访问 Android 模拟器或设备。
+- SRC 容器里的 `adb` 已经连接好所有 Android 模拟器或设备。
 - SRC 容器名稳定，例如 `starrailcopilot-src-1`。
 
 ### 快速开始
@@ -26,8 +26,6 @@ SRC Guard 会做三件事：
 ```yaml
 SRC_GUARD_TOKEN: "change-me-to-a-long-random-token"
 SRC_GUARD_SRC_CONTAINER: "starrailcopilot-src-1"
-SRC_GUARD_GAME_PACKAGE: "com.miHoYo.hkrpg"
-SRC_GUARD_ADB_CONNECT: "<android-host>:5555"
 ```
 
 启动服务：
@@ -44,18 +42,11 @@ build: .
 
 默认监听端口是 `22368`。
 
-如果 guard 容器里 `adb` 已经能直接找到默认设备，可以把 `SRC_GUARD_ADB_CONNECT` 留空。否则请设置成网络 ADB 目标，例如 `<android-host>:5555`。
+SRC Guard 会进入 `SRC_GUARD_SRC_CONTAINER` 容器执行 `adb devices`，并对所有 `device` 状态的设备关闭以下包名：
 
-常见包名：
-
-- 国服：`com.miHoYo.hkrpg`
-- 国际服：`com.HoYoverse.hkrpgoversea`
-
-可以用下面的命令确认实际包名：
-
-```bash
-adb shell pm list packages | grep -i hkrpg
-```
+- 云星铁：`com.miHoYo.cloudgames.hkrpg`
+- 星铁国服：`com.miHoYo.hkrpg`
+- 星铁国际服：`com.HoYoverse.hkrpgoversea`
 
 ### Webhook
 
@@ -112,8 +103,6 @@ fi
 | --- | --- | --- |
 | `SRC_GUARD_TOKEN` | 必填 | Webhook 共享密钥。 |
 | `SRC_GUARD_SRC_CONTAINER` | `starrailcopilot-src-1` | guard 控制的 SRC Docker 容器。 |
-| `SRC_GUARD_GAME_PACKAGE` | `com.miHoYo.hkrpg` | 通过 ADB 强制关闭的 Android 包名。 |
-| `SRC_GUARD_ADB_CONNECT` | 空 | 可选网络 ADB 目标，例如 `<android-host>:5555`。 |
 | `SRC_GUARD_DEFAULT_PLAY_MINUTES` | `120` | 请求未传 `minutes` 时的默认锁定时间。 |
 | `SRC_GUARD_MAX_PLAY_MINUTES` | `720` | 允许的最长锁定时间。 |
 | `SRC_GUARD_AUTO_RESUME` | `true` | 最后一个客户端停止后是否自动启动 SRC。 |
@@ -155,7 +144,7 @@ This is not an official SRC deployment method. The upstream SRC project primaril
 
 - Docker Engine or Docker Desktop.
 - A StarRailCopilot process running in a Docker container.
-- An Android emulator/device reachable by ADB from the guard container.
+- All Android emulators/devices already connected to `adb` inside the SRC container.
 - A stable container name for SRC, for example `starrailcopilot-src-1`.
 
 ### Quick Start
@@ -165,8 +154,6 @@ Edit [docker-compose.yml](./docker-compose.yml):
 ```yaml
 SRC_GUARD_TOKEN: "change-me-to-a-long-random-token"
 SRC_GUARD_SRC_CONTAINER: "starrailcopilot-src-1"
-SRC_GUARD_GAME_PACKAGE: "com.miHoYo.hkrpg"
-SRC_GUARD_ADB_CONNECT: "<android-host>:5555"
 ```
 
 Then start the guard:
@@ -183,18 +170,11 @@ build: .
 
 The service listens on `22368` by default.
 
-If your ADB device is already the default device inside the guard container, leave `SRC_GUARD_ADB_CONNECT` empty. Otherwise set it to a network ADB target such as `<android-host>:5555`.
+SRC Guard runs `adb devices` inside the `SRC_GUARD_SRC_CONTAINER` container, then force-stops these packages on every device with `device` status:
 
-Common package names:
-
+- Cloud CN: `com.miHoYo.cloudgames.hkrpg`
 - CN: `com.miHoYo.hkrpg`
 - Global: `com.HoYoverse.hkrpgoversea`
-
-You can verify the installed package with:
-
-```bash
-adb shell pm list packages | grep -i hkrpg
-```
 
 ### Webhooks
 
@@ -251,8 +231,6 @@ When another client is still active, `/allow-start` returns `423 Locked`. When a
 | --- | --- | --- |
 | `SRC_GUARD_TOKEN` | required | Shared secret for webhook calls. |
 | `SRC_GUARD_SRC_CONTAINER` | `starrailcopilot-src-1` | Docker container controlled by the guard. |
-| `SRC_GUARD_GAME_PACKAGE` | `com.miHoYo.hkrpg` | Android package to force-stop through ADB. |
-| `SRC_GUARD_ADB_CONNECT` | empty | Optional network ADB target, for example `<android-host>:5555`. |
 | `SRC_GUARD_DEFAULT_PLAY_MINUTES` | `120` | Default lock duration when `minutes` is omitted. |
 | `SRC_GUARD_MAX_PLAY_MINUTES` | `720` | Maximum accepted lock duration. |
 | `SRC_GUARD_AUTO_RESUME` | `true` | Start SRC automatically when the last active client stops. |

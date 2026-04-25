@@ -8,8 +8,6 @@ services:
     environment:
       SRC_GUARD_TOKEN: "change-me-to-a-long-random-token"
       SRC_GUARD_SRC_CONTAINER: "starrailcopilot-src-1"
-      SRC_GUARD_GAME_PACKAGE: "com.miHoYo.hkrpg"
-      SRC_GUARD_ADB_CONNECT: ""
       SRC_GUARD_DEFAULT_PLAY_MINUTES: "120"
       SRC_GUARD_MAX_PLAY_MINUTES: "720"
       SRC_GUARD_AUTO_RESUME: "true"

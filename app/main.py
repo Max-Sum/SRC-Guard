@@ -6,7 +6,6 @@ from typing import Optional
 from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 from pydantic import BaseModel, Field
 
-from app.adb_control import AdbControl
 from app.docker_control import DockerControl
 from app.settings import Settings
 from app.state import PlayState, utc_now
@@ -14,7 +13,6 @@ from app.state import PlayState, utc_now
 
 settings = Settings()
 state = PlayState(settings.state_file)
-adb_control = AdbControl(settings.game_package, settings.adb_connect)
 docker_control = DockerControl(settings.src_container)
 app = FastAPI(title="SRC Guard", version="1.0.0")
 
@@ -67,7 +65,7 @@ def play_start(request: PlayStartRequest) -> dict[str, object]:
     expires_at = utc_now() + timedelta(minutes=minutes)
 
     play = state.start(request.client, expires_at)
-    game_result = adb_control.force_stop_game()
+    game_result = docker_control.force_stop_games()
     docker_result = docker_control.stop_src()
 
     return {
