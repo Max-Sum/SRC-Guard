@@ -1,5 +1,6 @@
 private/
 data/
 src-guard-data/
+clients/windows/generated/
 .pytest_cache/
 __pycache__/

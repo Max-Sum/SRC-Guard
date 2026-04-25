@@ -15,8 +15,7 @@ SRC Guard 会做三件事：
 ### 需求
 
 - Docker Engine 或 Docker Desktop。
-- 一个运行在 Docker 容器里的 StarRailCopilot。
-- SRC 容器里的 `adb` 已经连接好所有 Android 模拟器或设备。
+- SRC 在 Docker 中运行
 - SRC 容器名稳定，例如 `starrailcopilot-src-1`。
 
 ### 快速开始
@@ -42,12 +41,6 @@ build: .
 
 默认监听端口是 `22368`。
 
-SRC Guard 会进入 `SRC_GUARD_SRC_CONTAINER` 容器执行 `adb devices`，并对所有 `device` 状态的设备关闭以下包名：
-
-- 云星铁：`com.miHoYo.cloudgames.hkrpg`
-- 星铁国服：`com.miHoYo.hkrpg`
-- 星铁国际服：`com.HoYoverse.hkrpgoversea`
-
 ### Webhook
 
 所有受保护接口都接受下面任意一种鉴权 header：
@@ -63,10 +56,19 @@ X-SRC-Guard-Token: <token>
 curl -X POST "http://<guard-host>:22368/webhook/play/start" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"client":"ipad","minutes":180}'
+  -d '{"client":"ipad","duration":360}'
 ```
 
-同一个 `client` 可以再次调用 start 来刷新过期时间。
+`duration` 表示本次锁定时长，单位是分钟。
+
+`start` 会设置或刷新同一个 `client` 的锁，并关游戏、停 SRC
+
+```bash
+curl -X POST "http://<guard-host>:22368/webhook/play/start" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"client":"ipad","duration":360}'
+```
 
 该设备停止游玩：
 
@@ -83,6 +85,14 @@ curl -X POST "http://<guard-host>:22368/webhook/play/stop" \
 curl "http://<guard-host>:22368/status" \
   -H "Authorization: Bearer <token>"
 ```
+
+### 客户端
+
+推荐直接使用 [clients](./clients/) 里的客户端脚本：
+
+- [Android Tasker 客户端](./clients/android-tasker/)
+- [iOS 快捷指令客户端](./clients/ios-shortcuts/)
+- [Windows PowerShell 客户端](./clients/windows/)
 
 ### 调度器集成
 
@@ -103,8 +113,8 @@ fi
 | --- | --- | --- |
 | `SRC_GUARD_TOKEN` | 必填 | Webhook 共享密钥。 |
 | `SRC_GUARD_SRC_CONTAINER` | `starrailcopilot-src-1` | guard 控制的 SRC Docker 容器。 |
-| `SRC_GUARD_DEFAULT_PLAY_MINUTES` | `120` | 请求未传 `minutes` 时的默认锁定时间。 |
-| `SRC_GUARD_MAX_PLAY_MINUTES` | `720` | 允许的最长锁定时间。 |
+| `SRC_GUARD_DEFAULT_DURATION` | `360` | 请求未传 `duration` 时的默认锁定时间，单位为分钟。 |
+| `SRC_GUARD_MAX_DURATION` | `720` | 允许的最长锁定时间，单位为分钟。 |
 | `SRC_GUARD_AUTO_RESUME` | `true` | 最后一个客户端停止后是否自动启动 SRC。 |
 
 ### 本地测试
@@ -123,11 +133,6 @@ mamba env update -f environment.yml --prune
 mamba run -n src-guard-test pytest -q
 ```
 
-### SRC 上游文档
-
-- [StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot)
-- [安装教程](https://github.com/LmeSzinc/StarRailCopilot/wiki/Installation_cn)
-
 ## English
 
 SRC Guard is a small webhook guard for people who run [StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot) as a long-running Docker service. When you want to log in and play on another device, it can temporarily prevent SRC from starting automatically.
@@ -144,7 +149,6 @@ This is not an official SRC deployment method. The upstream SRC project primaril
 
 - Docker Engine or Docker Desktop.
 - A StarRailCopilot process running in a Docker container.
-- All Android emulators/devices already connected to `adb` inside the SRC container.
 - A stable container name for SRC, for example `starrailcopilot-src-1`.
 
 ### Quick Start
@@ -170,12 +174,6 @@ build: .
 
 The service listens on `22368` by default.
 
-SRC Guard runs `adb devices` inside the `SRC_GUARD_SRC_CONTAINER` container, then force-stops these packages on every device with `device` status:
-
-- Cloud CN: `com.miHoYo.cloudgames.hkrpg`
-- CN: `com.miHoYo.hkrpg`
-- Global: `com.HoYoverse.hkrpgoversea`
-
 ### Webhooks
 
 All protected endpoints accept either header:
@@ -191,10 +189,19 @@ Start playing on another device:
 curl -X POST "http://<guard-host>:22368/webhook/play/start" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"client":"ipad","minutes":180}'
+  -d '{"client":"ipad","duration":360}'
 ```
 
-The same `client` can call start again to refresh the expiry time.
+`duration` is the lock duration in minutes.
+
+`start` sets or refreshes the same `client` lock. It closes the game and stops SRC:
+
+```bash
+curl -X POST "http://<guard-host>:22368/webhook/play/start" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"client":"ipad","duration":360}'
+```
 
 Stop playing on that device:
 
@@ -211,6 +218,16 @@ Check current lock state:
 curl "http://<guard-host>:22368/status" \
   -H "Authorization: Bearer <token>"
 ```
+
+### Clients
+
+Prefer the ready-to-use scripts in [clients](./clients/):
+
+- [Android Tasker client](./clients/android-tasker/)
+- [iOS Shortcuts client](./clients/ios-shortcuts/)
+- [Windows PowerShell client](./clients/windows/)
+
+Android and iOS clients should hold locally before sending stop: after detecting that the game left the foreground, delay the stop request; if the game returns during that window, cancel the pending stop.
 
 ### Scheduler Integration
 
@@ -231,8 +248,8 @@ When another client is still active, `/allow-start` returns `423 Locked`. When a
 | --- | --- | --- |
 | `SRC_GUARD_TOKEN` | required | Shared secret for webhook calls. |
 | `SRC_GUARD_SRC_CONTAINER` | `starrailcopilot-src-1` | Docker container controlled by the guard. |
-| `SRC_GUARD_DEFAULT_PLAY_MINUTES` | `120` | Default lock duration when `minutes` is omitted. |
-| `SRC_GUARD_MAX_PLAY_MINUTES` | `720` | Maximum accepted lock duration. |
+| `SRC_GUARD_DEFAULT_DURATION` | `360` | Default lock duration, in minutes, when `duration` is omitted. |
+| `SRC_GUARD_MAX_DURATION` | `720` | Maximum accepted lock duration, in minutes. |
 | `SRC_GUARD_AUTO_RESUME` | `true` | Start SRC automatically when the last active client stops. |
 
 ### Local Tests
@@ -250,8 +267,3 @@ If the environment already exists:
 mamba env update -f environment.yml --prune
 mamba run -n src-guard-test pytest -q
 ```
-
-### Upstream SRC Docs
-
-- [StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot)
-- [Installation tutorial](https://github.com/LmeSzinc/StarRailCopilot/wiki/Installation_en)
