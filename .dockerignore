@@ -1,0 +1,14 @@
+.git
+.github
+.pytest_cache
+__pycache__
+*.pyc
+
+data
+private
+src-guard-data
+
+.DS_Store
+environment.yml
+pytest.ini
+tests
